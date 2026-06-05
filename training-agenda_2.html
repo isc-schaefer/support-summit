@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support Summit Agenda</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDq5HSFeS62FpKswWu2L6R9Ie7M22_rrwU",
+    authDomain: "support-summit-agenda.firebaseapp.com",
+    databaseURL: "https://support-summit-agenda-default-rtdb.firebaseio.com",
+    projectId: "support-summit-agenda",
+    storageBucket: "support-summit-agenda.firebasestorage.app",
+    messagingSenderId: "78793993572",
+    appId: "1:78793993572:web:74e9ad579c99cc7b9c9e71"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const DAYS = ['Monday','Tuesday','Wednesday','Thursday'];
+  const DAYTIME = ['8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM'];
+  const EVENING = ['5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM'];
+  const HAS_EVENING = new Set(['Monday','Tuesday']);
+  const TRACKS = ['trackG','trackA','trackT'];
+
+  function allSlots(day) { return HAS_EVENING.has(day) ? [...DAYTIME, ...EVENING] : DAYTIME; }
+
+  const SEED_ROWMODE = {"Monday":{"8:00 AM":"general","8:30 AM":"general","9:00 AM":"general","9:30 AM":"general","10:00 AM":"general","10:30 AM":"general","11:00 AM":"general","11:30 AM":"general","12:00 PM":"general","12:30 PM":"general","1:00 PM":"general","1:30 PM":"general","2:00 PM":"general","2:30 PM":"general","3:00 PM":"general","3:30 PM":"general","4:00 PM":"general","4:30 PM":"general","5:00 PM":"general","5:30 PM":"general","6:00 PM":"general","6:30 PM":"general"},"Tuesday":{"8:00 AM":"general","8:30 AM":"general","9:00 AM":"general","9:30 AM":"general","10:00 AM":"general","10:30 AM":"general","11:00 AM":"general","11:30 AM":"general","12:00 PM":"general","12:30 PM":"general","1:00 PM":"general","1:30 PM":"split","2:00 PM":"split","2:30 PM":"split","3:00 PM":"general","3:30 PM":"split","4:00 PM":"split","4:30 PM":"split","5:00 PM":"general","5:30 PM":"general","6:00 PM":"general","6:30 PM":"general","7:00 PM":"general","7:30 PM":"general","8:00 PM":"general","8:30 PM":"general","9:00 PM":"general"},"Wednesday":{"8:00 AM":"general","8:30 AM":"general","9:00 AM":"general","9:30 AM":"general","10:00 AM":"general","10:30 AM":"general","11:00 AM":"general","11:30 AM":"general","12:00 PM":"general","12:30 PM":"general","1:00 PM":"general","1:30 PM":"general","2:00 PM":"general","2:30 PM":"general","3:00 PM":"general","3:30 PM":"general","4:00 PM":"general","4:30 PM":"general","5:00 PM":"general"},"Thursday":{"8:00 AM":"general","8:30 AM":"general","9:00 AM":"general","9:30 AM":"general","10:00 AM":"general","10:30 AM":"general","11:00 AM":"general","11:30 AM":"general","12:00 PM":"general","12:30 PM":"general","1:00 PM":"general","1:30 PM":"general","2:00 PM":"general","2:30 PM":"general","3:00 PM":"general","3:30 PM":"split","4:00 PM":"split","4:30 PM":"split","5:00 PM":"general"}};
+
+  const SEED_SESSIONS = {"Monday||8:00 AM||general":{"type":"break","title":"Registration & welcome coffee","speaker":"","notes":""},"Monday||8:30 AM||general":{"type":"break","title":"Registration & welcome coffee","speaker":"","notes":""},"Monday||9:00 AM||general":{"type":"general","title":"Welcome","speaker":"Marcelo & Alex","notes":""},"Monday||9:30 AM||general":{"type":"general","title":"Opening keynote","speaker":"TBD","notes":""},"Monday||10:00 AM||general":{"type":"break","title":"Morning break","speaker":"","notes":""},"Monday||10:30 AM||general":{"type":"general","title":"Client Services Vision","speaker":"John Paladino","notes":""},"Monday||11:00 AM||general":{"type":"general","title":"Client Services Vision","speaker":"John Paladino","notes":""},"Monday||11:30 AM||general":{"type":"general","title":"Managed Services","speaker":"Peter/Mark/Jon/Todd","notes":""},"Monday||12:00 PM||general":{"type":"general","title":"Managed Services","speaker":"Peter/Mark/Jon/Todd","notes":""},"Monday||12:30 PM||general":{"type":"break","title":"Lunch","speaker":"","notes":""},"Monday||1:00 PM||general":{"type":"break","title":"Lunch","speaker":"","notes":""},"Monday||1:30 PM||general":{"type":"general","title":"Learning Services","speaker":"Jim Breen","notes":""},"Monday||2:00 PM||general":{"type":"general","title":"KLAS Deep Dive - Support","speaker":"TBD","notes":""},"Monday||2:30 PM||general":{"type":"general","title":"KLAS Deep Dive - Support","speaker":"TBD","notes":""},"Monday||3:00 PM||general":{"type":"break","title":"Afternoon Break","speaker":"","notes":""},"Monday||3:30 PM||general":{"type":"general","title":"General session","speaker":"TBD","notes":""},"Monday||4:00 PM||general":{"type":"general","title":"Day 1 wrap-up & Q&A","speaker":"","notes":""},"Monday||4:30 PM||general":{"type":"social","title":"Evening reception","speaker":"","notes":""},"Monday||5:00 PM||general":{"type":"social","title":"Evening reception","speaker":"","notes":""},"Monday||5:30 PM||general":{"type":"social","title":"Evening reception","speaker":"","notes":""},"Monday||6:00 PM||general":{"type":"social","title":"Evening reception","speaker":"","notes":""},"Monday||6:30 PM||general":{"type":"social","title":"Evening reception","speaker":"","notes":""},"Tuesday||8:00 AM||general":{"type":"break","title":"Morning coffee","speaker":"","notes":""},"Tuesday||8:30 AM||general":{"type":"break","title":"Morning coffee","speaker":"","notes":""},"Tuesday||9:00 AM||general":{"type":"general","title":"Career in Support","speaker":"Alex & Team","notes":""},"Tuesday||9:30 AM||general":{"type":"general","title":"EHR Solutions Roadmap","speaker":"Roberto Maggitteri","notes":""},"Tuesday||10:00 AM||general":{"type":"general","title":"EHR Solutions Roadmap","speaker":"Roberto Maggitteri","notes":""},"Tuesday||10:30 AM||general":{"type":"break","title":"Morning Break","speaker":"","notes":""},"Tuesday||11:00 AM||general":{"type":"general","title":"Editions Roadmap","speaker":"Fadi Bou Diab","notes":""},"Tuesday||11:30 AM||general":{"type":"general","title":"Editions Roadmap","speaker":"Fadi Bou Diab","notes":""},"Tuesday||12:00 PM||general":{"type":"general","title":"How to swarm","speaker":"Amy Mourant & David Waits","notes":""},"Tuesday||12:30 PM||general":{"type":"break","title":"Lunch","speaker":"","notes":""},"Tuesday||1:00 PM||general":{"type":"break","title":"Lunch","speaker":"","notes":""},"Tuesday||1:30 PM||trackG":{"type":"trackG","title":"General track session","speaker":"TBD","notes":""},"Tuesday||1:30 PM||trackA":{"type":"trackA","title":"Billing","speaker":"Helen/Fadi","notes":""},"Tuesday||1:30 PM||trackT":{"type":"trackT","title":"Trak in Containers","speaker":"Mark Bolinsky","notes":""},"Tuesday||2:00 PM||trackG":{"type":"trackG","title":"General track session","speaker":"TBD","notes":""},"Tuesday||2:00 PM||trackA":{"type":"trackA","title":"Billing","speaker":"Helen / Fadi","notes":""},"Tuesday||2:00 PM||trackT":{"type":"trackT","title":"Trak in Containers","speaker":"Mark Bolinsky","notes":""},"Tuesday||2:30 PM||trackG":{"type":"trackG","title":"General track session","speaker":"TBD","notes":""},"Tuesday||2:30 PM||trackA":{"type":"trackA","title":"Toolkit","speaker":"TBD","notes":""},"Tuesday||2:30 PM||trackT":{"type":"trackT","title":"IRIS Performance Updates","speaker":"TBD","notes":""},"Tuesday||3:00 PM||general":{"type":"break","title":"Afternoon break","speaker":"","notes":""},"Tuesday||3:30 PM||trackG":{"type":"trackG","title":"General track session","speaker":"TBD","notes":""},"Tuesday||3:30 PM||trackA":{"type":"trackA","title":"SQL for Application Specialists","speaker":"TBD","notes":""},"Tuesday||3:30 PM||trackT":{"type":"trackT","title":"Debugging Tips & Tricks","speaker":"Helen & Milagros","notes":""},"Tuesday||4:00 PM||trackG":{"type":"trackG","title":"General track session","speaker":"TBD","notes":""},"Tuesday||4:00 PM||trackA":{"type":"trackA","title":"SQL for Application Specialists","speaker":"TBD","notes":""},"Tuesday||4:00 PM||trackT":{"type":"trackT","title":"Debugging Tips & Tricks","speaker":"Helen & Milagros","notes":""},"Tuesday||4:30 PM||trackG":{"type":"trackG","title":"General track session","speaker":"TBD","notes":""},"Tuesday||4:30 PM||trackA":{"type":"trackA","title":"Waiting Lists","speaker":"TBD","notes":""},"Tuesday||4:30 PM||trackT":{"type":"trackT","title":"iService GitHub Project","speaker":"Chris Stewart & Robbie Luman","notes":""},"Tuesday||5:00 PM||general":{"type":"general","title":"Day wrap-up","speaker":"","notes":""},"Tuesday||5:30 PM||general":{"type":"social","title":"Strike Up the Night 🎳","speaker":"","notes":""},"Tuesday||6:00 PM||general":{"type":"social","title":"Strike Up the Night 🎳","speaker":"","notes":""},"Tuesday||6:30 PM||general":{"type":"social","title":"Strike Up the Night 🎳","speaker":"","notes":""},"Tuesday||7:00 PM||general":{"type":"social","title":"Strike Up the Night 🎳","speaker":"","notes":""},"Tuesday||7:30 PM||general":{"type":"social","title":"Strike Up the Night 🎳","speaker":"","notes":""},"Tuesday||8:00 PM||general":{"type":"social","title":"Strike Up the Night 🎳","speaker":"","notes":""},"Tuesday||8:30 PM||general":{"type":"social","title":"Strike Up the Night 🎳","speaker":"","notes":""},"Tuesday||9:00 PM||general":{"type":"social","title":"Strike Up the Night 🎳","speaker":"","notes":""},"Wednesday||8:00 AM||general":{"type":"break","title":"Morning coffee","speaker":"","notes":""},"Wednesday||8:30 AM||general":{"type":"break","title":"Morning coffee","speaker":"","notes":""},"Wednesday||9:00 AM||general":{"type":"general","title":"SMO Update","speaker":"Caroline Saavedra","notes":""},"Wednesday||9:30 AM||general":{"type":"general","title":"Backlog Reduction","speaker":"Caroline","notes":""},"Wednesday||10:00 AM||general":{"type":"general","title":"Backline - Present and Future","speaker":"Norman Clelland","notes":""},"Wednesday||10:30 AM||general":{"type":"break","title":"Morning Break","speaker":"","notes":""},"Wednesday||11:00 AM||general":{"type":"general","title":"Cross-regional collaboration","speaker":"Dom & Caroline & Luca","notes":""},"Wednesday||11:30 AM||general":{"type":"general","title":"HealthShare Intro for Trak Advisors","speaker":"TBD","notes":""},"Wednesday||12:00 PM||general":{"type":"break","title":"Lunch","speaker":"","notes":""},"Wednesday||12:30 PM||general":{"type":"break","title":"Lunch","speaker":"","notes":""},"Wednesday||1:00 PM||general":{"type":"social","title":"Travel to One Congress","speaker":"","notes":""},"Wednesday||1:30 PM||general":{"type":"general","title":"Tour of One Congress","speaker":"","notes":""},"Wednesday||2:00 PM||general":{"type":"general","title":"Tour of One Congress","speaker":"","notes":""},"Wednesday||2:30 PM||general":{"type":"general","title":"Free time for meetings at One Congress","speaker":"","notes":""},"Wednesday||3:00 PM||general":{"type":"break","title":"Afternoon break","speaker":"","notes":""},"Wednesday||3:30 PM||general":{"type":"general","title":"Free time for meetings at One Congress","speaker":"","notes":""},"Wednesday||4:00 PM||general":{"type":"general","title":"Free time for meetings at One Congress","speaker":"","notes":""},"Wednesday||4:30 PM||general":{"type":"general","title":"Free time for meetings at One Congress","speaker":"","notes":""},"Wednesday||5:00 PM||general":{"type":"general","title":"Day wrap-up","speaker":"","notes":""},"Thursday||8:00 AM||general":{"type":"break","title":"Morning coffee","speaker":"","notes":""},"Thursday||8:30 AM||general":{"type":"break","title":"Morning Coffee","speaker":"","notes":""},"Thursday||9:00 AM||general":{"type":"general","title":"Future of TrakCare Analytics","speaker":"Eslam Farahat / Meredith Staszak","notes":""},"Thursday||9:30 AM||general":{"type":"general","title":"Data Gateway","speaker":"Meredith Staszak","notes":""},"Thursday||10:00 AM||general":{"type":"general","title":"Debugging Intellicare AI Module","speaker":"Eslam Farahat","notes":""},"Thursday||10:30 AM||general":{"type":"break","title":"Morning Break","speaker":"","notes":""},"Thursday||11:00 AM||general":{"type":"general","title":"HMF","speaker":"Eslam/Neil/Meredith","notes":""},"Thursday||11:30 AM||general":{"type":"general","title":"HMF","speaker":"Eslam/Neil/Meredith","notes":""},"Thursday||12:00 PM||general":{"type":"break","title":"Lunch","speaker":"","notes":""},"Thursday||12:30 PM||general":{"type":"break","title":"Lunch","speaker":"","notes":""},"Thursday||1:00 PM||general":{"type":"general","title":"Performance Troubleshooting","speaker":"TBD","notes":""},"Thursday||1:30 PM||general":{"type":"general","title":"Visual Rules for Labs - Best Practices","speaker":"TBD","notes":""},"Thursday||2:00 PM||general":{"type":"general","title":"Printing, Logi Reports and TrakCare Integration","speaker":"TBD","notes":""},"Thursday||2:30 PM||general":{"type":"general","title":"Printing, Logi Reports and TrakCare Integration","speaker":"TBD","notes":""},"Thursday||3:00 PM||general":{"type":"break","title":"Afternoon break","speaker":"","notes":""},"Thursday||3:30 PM||trackG":{"type":"trackG","title":"General track session","speaker":"TBD","notes":""},"Thursday||3:30 PM||trackA":{"type":"trackA","title":"Application track session","speaker":"TBD","notes":""},"Thursday||3:30 PM||trackT":{"type":"trackT","title":"Technical track session","speaker":"TBD","notes":""},"Thursday||4:00 PM||trackG":{"type":"trackG","title":"General track session","speaker":"TBD","notes":""},"Thursday||4:00 PM||trackA":{"type":"trackA","title":"Application track session","speaker":"TBD","notes":""},"Thursday||4:00 PM||trackT":{"type":"trackT","title":"Technical track session","speaker":"TBD","notes":""},"Thursday||4:30 PM||trackG":{"type":"trackG","title":"General track session","speaker":"TBD","notes":""},"Thursday||4:30 PM||trackA":{"type":"trackA","title":"Application track session","speaker":"TBD","notes":""},"Thursday||4:30 PM||trackT":{"type":"trackT","title":"Technical track session","speaker":"TBD","notes":""},"Thursday||5:00 PM||general":{"type":"general","title":"Closing ceremony & wrap-up","speaker":"","notes":""}};
+
+  let rowMode = {};
+  let sessions = {};
+  let currentDay = 0;
+  let editKey = null;
+  let initialized = false;
+
+  // Sanitize keys for Firebase (replace || with __)
+  function fbKey(k) { return k.replace(/\|/g, '_'); }
+  function fromFbKey(k) { return k.replace(/_([^_])/g, (m,c) => '|'+c).replace(/__/g,'||'); }
+
+  // Listen to Firebase for live updates
+  onValue(ref(db, 'agenda'), (snapshot) => {
+    const data = snapshot.val();
+    if (data && data.rowMode && data.sessions) {
+      rowMode = data.rowMode;
+      // convert firebase-safe keys back
+      sessions = {};
+      Object.entries(data.sessions).forEach(([k, v]) => {
+        sessions[k.replace(/\|/g,'|')] = v;
+      });
+      // sessions keys stored with | replaced by pipe — actually store as-is using push encoding
+      sessions = data.sessions;
+    } else if (!initialized) {
+      // First time — seed the database
+      initialized = true;
+      const seedSessions = {};
+      Object.entries(SEED_SESSIONS).forEach(([k,v]) => { seedSessions[k] = v; });
+      set(ref(db, 'agenda'), { rowMode: SEED_ROWMODE, sessions: seedSessions });
+      rowMode = JSON.parse(JSON.stringify(SEED_ROWMODE));
+      sessions = JSON.parse(JSON.stringify(SEED_SESSIONS));
+    }
+    initialized = true;
+    setStatus('live');
+    renderGrid();
+  });
+
+  function setStatus(state) {
+    const el = document.getElementById('statusDot');
+    if (!el) return;
+    if (state === 'live') { el.style.background = '#22c55e'; el.title = 'Connected — live sync active'; }
+    else if (state === 'saving') { el.style.background = '#f59e0b'; el.title = 'Saving...'; }
+    else { el.style.background = '#ef4444'; el.title = 'Disconnected'; }
+  }
+
+  function saveToFirebase(updates) {
+    setStatus('saving');
+    update(ref(db, 'agenda'), updates).then(() => setStatus('live')).catch(() => setStatus('error'));
+  }
+
+  window.switchDay = function(i) { currentDay = i; renderTabs(); renderGrid(); }
+
+  function renderTabs() {
+    document.getElementById('dayTabs').innerHTML = DAYS.map((d,i) =>
+      `<button class="day-tab${i===currentDay?' active':''}" onclick="switchDay(${i})">${d}</button>`
+    ).join('');
+  }
+
+  function renderGrid() {
+    const day = DAYS[currentDay];
+    const slots = allSlots(day);
+    const modes = (rowMode[day] || {});
+    let html = '';
+    let passedEvening = false;
+
+    slots.forEach(slot => {
+      const isEvening = EVENING.includes(slot);
+      if (isEvening && !passedEvening) {
+        passedEvening = true;
+        html += `<div class="time-row" style="min-height:auto;border-bottom:1px solid var(--border);">
+          <div class="evening-divider"><span>Evening</span><div class="evening-divider-line"></div></div>
+        </div>`;
+      }
+      const mode = modes[slot] || 'general';
+      html += `<div class="time-row"><div class="time-cell">${slot}</div>`;
+      if (mode === 'general') {
+        const k = `${day}||${slot}||general`;
+        const s = sessions[k] || {type:'empty', title:'', speaker:'', notes:''};
+        html += `<div class="session-cell span-all">
+          <div class="session-inner type-${s.type}" onclick="openModal('${k}')">
+            <div class="s-title">${s.title || '+ add session'}</div>
+            ${s.speaker ? `<div class="s-speaker">${s.speaker}</div>` : ''}
+            <span class="edit-chip">edit</span>
+          </div>
+        </div>`;
+      } else {
+        TRACKS.forEach(t => {
+          const k = `${day}||${slot}||${t}`;
+          const s = sessions[k] || {type:'empty', title:'', speaker:'', notes:''};
+          html += `<div class="session-cell">
+            <div class="session-inner type-${s.type||'empty'}" onclick="openModal('${k}')">
+              <div class="s-title">${s.title || '+ add'}</div>
+              ${s.speaker ? `<div class="s-speaker">${s.speaker}</div>` : ''}
+              <span class="edit-chip">edit</span>
+            </div>
+          </div>`;
+        });
+      }
+      html += `</div>`;
+    });
+    document.getElementById('gridBody').innerHTML = html;
+    renderTabs();
+  }
+
+  window.openModal = function(k) {
+    editKey = k;
+    const s = sessions[k] || {};
+    document.getElementById('mTitle').value = s.title || '';
+    document.getElementById('mSpeaker').value = s.speaker || '';
+    document.getElementById('mType').value = s.type || 'empty';
+    document.getElementById('mNotes').value = s.notes || '';
+    document.getElementById('overlay').classList.add('open');
+    setTimeout(() => document.getElementById('mTitle').focus(), 80);
+  }
+
+  window.closeModal = function() {
+    document.getElementById('overlay').classList.remove('open');
+    editKey = null;
+  }
+
+  window.saveModal = function() {
+    if (!editKey) return;
+    const updated = {
+      type: document.getElementById('mType').value,
+      title: document.getElementById('mTitle').value.trim(),
+      speaker: document.getElementById('mSpeaker').value.trim(),
+      notes: document.getElementById('mNotes').value.trim()
+    };
+    sessions[editKey] = updated;
+    saveToFirebase({ [`sessions/${editKey}`]: updated });
+    closeModal();
+    renderGrid();
+  }
+
+  document.getElementById('overlay').addEventListener('click', e => { if (e.target === document.getElementById('overlay')) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); if (e.metaKey && e.key === 'Enter') saveModal(); });
+
+  renderTabs();
+</script>
+<style>
+  :root {
+    --bg: #F7F6F2; --surface: #FFFFFF; --surface2: #F0EFE9;
+    --border: rgba(0,0,0,0.08); --border-strong: rgba(0,0,0,0.14);
+    --text: #1A1916; --text-muted: #6B6A65; --text-faint: #A09F9A;
+    --general: #1D5FA8; --general-bg: #E8F1FB; --general-border: #A8C8EE;
+    --trackG: #1A6B47; --trackG-bg: #E4F3EC; --trackG-border: #7DCAA5;
+    --trackA: #6B3FA8; --trackA-bg: #F0EBFB; --trackA-border: #C4A8EE;
+    --trackT: #A85A1A; --trackT-bg: #FBF0E4; --trackT-border: #EEC07A;
+    --social: #A8326B; --social-bg: #FBE8F1; --social-border: #EEA8C8;
+    --break-bg: #F0EFE9; --break-border: rgba(0,0,0,0.1);
+    --radius: 8px; --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 32px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 50; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo-mark { width: 28px; height: 28px; background: var(--text); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .logo-mark svg { width: 16px; height: 16px; fill: var(--bg); }
+  .header-title { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
+  .header-sub { font-size: 12px; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+  .header-actions { display: flex; align-items: center; gap: 10px; }
+  .status-dot-wrap { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+  #statusDot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; transition: background 0.3s; }
+  .btn { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: var(--radius); cursor: pointer; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); transition: background 0.12s; }
+  .btn:hover { background: var(--surface2); }
+  .btn-dark { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .btn-dark:hover { background: #2e2d29; }
+  .main { padding: 24px 32px 48px; max-width: 1200px; margin: 0 auto; }
+  .day-tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 4px; width: fit-content; }
+  .day-tab { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; padding: 6px 18px; border-radius: 8px; cursor: pointer; border: none; background: transparent; color: var(--text-muted); transition: all 0.15s; }
+  .day-tab:hover { color: var(--text); background: var(--surface2); }
+  .day-tab.active { background: var(--text); color: var(--bg); }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+  .legend-pip { width: 8px; height: 8px; border-radius: 2px; }
+  .grid-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .grid-head { display: grid; grid-template-columns: 72px 1fr 1fr 1fr; gap: 0; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .grid-head-cell { padding: 10px 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); border-right: 1px solid var(--border); }
+  .grid-head-cell:last-child { border-right: none; }
+  .grid-body { display: flex; flex-direction: column; }
+  .time-row { display: grid; grid-template-columns: 72px 1fr 1fr 1fr; gap: 0; border-bottom: 1px solid var(--border); min-height: 44px; }
+  .time-row:last-child { border-bottom: none; }
+  .time-cell { padding: 6px 10px 6px 12px; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text-faint); border-right: 1px solid var(--border); display: flex; align-items: flex-start; padding-top: 10px; background: var(--surface2); }
+  .session-cell { border-right: 1px solid var(--border); padding: 4px; }
+  .session-cell:last-child { border-right: none; }
+  .session-cell.span-all { grid-column: 2 / -1; border-right: none; }
+  .session-inner { width: 100%; height: 100%; border-radius: 6px; padding: 7px 10px; cursor: pointer; transition: filter 0.12s; min-height: 34px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+  .session-inner:hover { filter: brightness(0.96); }
+  .session-inner.type-general { background: var(--general-bg); border: 1px solid var(--general-border); }
+  .session-inner.type-trackG { background: var(--trackG-bg); border: 1px solid var(--trackG-border); }
+  .session-inner.type-trackA { background: var(--trackA-bg); border: 1px solid var(--trackA-border); }
+  .session-inner.type-trackT { background: var(--trackT-bg); border: 1px solid var(--trackT-border); }
+  .session-inner.type-social { background: var(--social-bg); border: 1px solid var(--social-border); }
+  .session-inner.type-break { background: var(--break-bg); border: 1px dashed var(--break-border); }
+  .session-inner.type-empty { background: transparent; border: 1px dashed var(--border); opacity: 0.5; }
+  .session-inner.type-empty:hover { opacity: 1; }
+  .s-title { font-size: 12px; font-weight: 500; line-height: 1.3; }
+  .type-general .s-title { color: var(--general); }
+  .type-trackG .s-title { color: var(--trackG); }
+  .type-trackA .s-title { color: var(--trackA); }
+  .type-trackT .s-title { color: var(--trackT); }
+  .type-social .s-title { color: var(--social); }
+  .type-break .s-title { color: var(--text-muted); }
+  .type-empty .s-title { color: var(--text-faint); font-style: italic; }
+  .s-speaker { font-size: 11px; margin-top: 2px; opacity: 0.75; }
+  .type-general .s-speaker { color: var(--general); }
+  .type-trackG .s-speaker { color: var(--trackG); }
+  .type-trackA .s-speaker { color: var(--trackA); }
+  .type-trackT .s-speaker { color: var(--trackT); }
+  .type-social .s-speaker { color: var(--social); }
+  .edit-chip { position: absolute; top: 4px; right: 5px; font-size: 10px; background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.08); border-radius: 4px; padding: 1px 5px; color: var(--text-muted); opacity: 0; transition: opacity 0.12s; pointer-events: none; }
+  .session-inner:hover .edit-chip { opacity: 1; }
+  .evening-divider { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 8px 12px 4px; background: var(--surface); }
+  .evening-divider span { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--social); white-space: nowrap; }
+  .evening-divider-line { flex: 1; height: 1px; background: var(--social-border); }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.15s; }
+  .overlay.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); padding: 24px; width: 400px; max-width: 95vw; transform: translateY(8px); transition: transform 0.15s; }
+  .overlay.open .modal { transform: translateY(0); }
+  .modal-title { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 18px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 5px; }
+  .field input, .field select, .field textarea { width: 100%; font-family: 'DM Sans', sans-serif; font-size: 14px; padding: 8px 11px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--bg); color: var(--text); outline: none; transition: border-color 0.12s; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: rgba(0,0,0,0.3); }
+  .field textarea { resize: vertical; min-height: 64px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+  .loading { display: flex; align-items: center; justify-content: center; height: 200px; color: var(--text-muted); font-size: 14px; gap: 10px; }
+  .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--text-muted); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media print {
+    header { position: static; }
+    .header-actions, .day-tabs, .legend { display: none; }
+    .grid-wrap { border: 1px solid #ccc; }
+    .main { padding: 0; max-width: 100%; }
+    .overlay { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="logo-mark">
+      <svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+    </div>
+    <div>
+      <div class="header-title">Support Summit Agenda</div>
+      <div class="header-sub">~100 attendees &middot; 3 tracks &middot; Mon–Thu</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="status-dot-wrap"><div id="statusDot"></div><span>Live sync</span></div>
+    <button class="btn btn-dark" onclick="window.print()">Print / PDF</button>
+  </div>
+</header>
+
+<div class="main">
+  <div class="day-tabs" id="dayTabs">
+    <div class="loading"><div class="spinner"></div> Connecting...</div>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-pip" style="background:var(--general-border)"></div>General session</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--trackG-border)"></div>General track</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--trackA-border)"></div>Application track</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--trackT-border)"></div>Technical track</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--social-border)"></div>Social event</div>
+    <div class="legend-item"><div class="legend-pip" style="background:#ccc; border:1px dashed #aaa;"></div>Break</div>
+  </div>
+  <div class="grid-wrap">
+    <div class="grid-head">
+      <div class="grid-head-cell">Time</div>
+      <div class="grid-head-cell">General</div>
+      <div class="grid-head-cell">Application</div>
+      <div class="grid-head-cell">Technical</div>
+    </div>
+    <div class="grid-body" id="gridBody"><div class="loading"><div class="spinner"></div> Loading agenda...</div></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-title">Edit session</div>
+    <div class="field"><label>Title</label><input type="text" id="mTitle" placeholder="Session title" /></div>
+    <div class="field"><label>Speaker / facilitator</label><input type="text" id="mSpeaker" placeholder="Name or TBD" /></div>
+    <div class="field"><label>Session type</label>
+      <select id="mType">
+        <option value="general">General session (all tracks)</option>
+        <option value="trackG">General track</option>
+        <option value="trackA">Application track</option>
+        <option value="trackT">Technical track</option>
+        <option value="social">Social event</option>
+        <option value="break">Break / Meal</option>
+        <option value="empty">Empty slot</option>
+      </select>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="mNotes" placeholder="Room, location, details..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-dark" onclick="saveModal()">Save changes</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
