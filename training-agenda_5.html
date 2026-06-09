@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support Summit Agenda</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDq5HSFeS62FpKswWu2L6R9Ie7M22_rrwU",
+    authDomain: "support-summit-agenda.firebaseapp.com",
+    databaseURL: "https://support-summit-agenda-default-rtdb.firebaseio.com",
+    projectId: "support-summit-agenda",
+    storageBucket: "support-summit-agenda.firebasestorage.app",
+    messagingSenderId: "78793993572",
+    appId: "1:78793993572:web:74e9ad579c99cc7b9c9e71"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const DAYS = ['Monday','Tuesday','Wednesday','Thursday'];
+  const DAYTIME = ['8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM'];
+  const EVENING = ['5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM'];
+  const HAS_EVENING = new Set(['Tuesday']);
+
+  const TRACK_LABELS = { trackA:'Application', trackT:'Technical', trackW:'WRC', trackE:'EHR Solutions' };
+
+  // Per-day config: which tracks are available when split, and which slots are always general
+  const DAY_CONFIG = {
+    'Monday':    { tracks: [],                  alwaysGeneral: () => true },
+    'Tuesday':   { tracks: ['trackA','trackT'], alwaysGeneral: (slot) => DAYTIME.indexOf(slot) <= DAYTIME.indexOf('12:30 PM') },
+    'Wednesday': { tracks: ['trackW','trackE'], alwaysGeneral: (slot) => DAYTIME.indexOf(slot) <= DAYTIME.indexOf('12:30 PM') },
+    'Thursday':  { tracks: ['trackW','trackE'],  alwaysGeneral: (slot) => slot === '3:00 PM' || DAYTIME.indexOf(slot) >= DAYTIME.indexOf('3:30 PM') }
+  };
+
+  function allSlots(day) { return HAS_EVENING.has(day) ? [...DAYTIME, ...EVENING] : DAYTIME; }
+  function canSplit(day, slot) {
+    const cfg = DAY_CONFIG[day];
+    if (!cfg || cfg.tracks.length === 0) return false;
+    if (EVENING.includes(slot)) return false;
+    return !cfg.alwaysGeneral(slot);
+  }
+
+  let rowMode = {};   // rowMode[day][slot] = 'general' | 'split'
+  let sessions = {};
+  let currentDay = 0;
+  let editKey = null;
+  let initialized = false;
+
+  function getMode(day, slot) {
+    const cfg = DAY_CONFIG[day];
+    if (!cfg || cfg.tracks.length === 0 || cfg.alwaysGeneral(slot) || EVENING.includes(slot)) return 'general';
+    return (rowMode[day] && rowMode[day][slot]) || 'general';
+  }
+
+  function buildDefaultRowMode() {
+    const rm = {};
+    DAYS.forEach(day => {
+      rm[day] = {};
+      allSlots(day).forEach(slot => { rm[day][slot] = 'general'; });
+    });
+    return rm;
+  }
+
+  onValue(ref(db, 'agenda'), (snapshot) => {
+    const data = snapshot.val();
+    if (data && data.rowMode && data.sessions) {
+      rowMode = data.rowMode;
+      sessions = data.sessions;
+    } else if (!initialized) {
+      rowMode = buildDefaultRowMode();
+      sessions = {};
+      set(ref(db, 'agenda'), { rowMode, sessions });
+    }
+    initialized = true;
+    setStatus('live');
+    renderTabs();
+    renderGrid();
+  });
+
+  function setStatus(state) {
+    const el = document.getElementById('statusDot');
+    if (!el) return;
+    if (state === 'live') { el.style.background = '#22c55e'; el.title = 'Connected'; }
+    else if (state === 'saving') { el.style.background = '#f59e0b'; el.title = 'Saving...'; }
+    else { el.style.background = '#ef4444'; el.title = 'Disconnected'; }
+  }
+
+  function saveToFirebase(updates) {
+    setStatus('saving');
+    update(ref(db, 'agenda'), updates).then(() => setStatus('live'));
+  }
+
+  window.switchDay = (i) => { currentDay = i; renderTabs(); renderGrid(); };
+
+  function renderTabs() {
+    document.getElementById('dayTabs').innerHTML = DAYS.map((d,i) =>
+      `<button class="day-tab${i===currentDay?' active':''}" onclick="switchDay(${i})">${d}</button>`
+    ).join('');
+  }
+
+  function renderGrid() {
+    const day = DAYS[currentDay];
+    const slots = allSlots(day);
+    const cfg = DAY_CONFIG[day];
+    const tracks = cfg.tracks;
+
+    // Update header dynamically based on day
+    const headEl = document.getElementById('gridHead');
+    if (tracks.length === 0) {
+      headEl.style.gridTemplateColumns = '72px 1fr 32px';
+      headEl.innerHTML = `<div class="grid-head-cell">Time</div><div class="grid-head-cell">General Session</div><div class="grid-head-cell"></div>`;
+    } else {
+      headEl.style.gridTemplateColumns = `72px ${tracks.map(()=>'1fr').join(' ')} 32px`;
+      headEl.innerHTML = `<div class="grid-head-cell">Time</div>${tracks.map(t=>`<div class="grid-head-cell">${TRACK_LABELS[t]||t}</div>`).join('')}<div class="grid-head-cell"></div>`;
+    }
+
+    let html = '';
+    let passedEvening = false;
+    const colCount = Math.max(tracks.length, 1);
+    const gridCols = `72px ${Array(colCount).fill('1fr').join(' ')} 32px`;
+
+    slots.forEach(slot => {
+      if (EVENING.includes(slot) && !passedEvening) {
+        passedEvening = true;
+        html += `<div class="time-row" style="grid-template-columns:${gridCols};min-height:auto;border-bottom:1px solid var(--border);">
+          <div class="evening-divider"><span>Evening</span><div class="evening-divider-line"></div></div>
+        </div>`;
+      }
+
+      const mode = getMode(day, slot);
+      const splittable = canSplit(day, slot);
+      html += `<div class="time-row" style="grid-template-columns:${gridCols}">`;
+      html += `<div class="time-cell">${slot}</div>`;
+
+      if (mode === 'general') {
+        const k = `${day}||${slot}||general`;
+        const s = sessions[k] || {type:'empty',title:'',speaker:'',notes:''};
+        html += `<div class="session-cell span-all" style="grid-column:2/${2+colCount}">
+          <div class="session-inner type-${s.type||'empty'}" onclick="openModal('${k}')">
+            <div class="s-title">${s.title||'+ add session'}</div>
+            ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
+            <span class="edit-chip">edit</span>
+          </div>
+        </div>`;
+        html += `<div class="action-col">${splittable?`<button class="icon-btn split-btn" title="Split into tracks" onclick="splitRow('${day}','${slot}')">⊞</button>`:''}</div>`;
+      } else {
+        tracks.forEach(t => {
+          const k = `${day}||${slot}||${t}`;
+          const s = sessions[k] || {type:t,title:'',speaker:'',notes:''};
+          html += `<div class="session-cell">
+            <div class="session-inner type-${s.type||t}" onclick="openModal('${k}')">
+              <div class="s-title">${s.title||'+ add'}</div>
+              ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
+              <span class="edit-chip">edit</span>
+            </div>
+          </div>`;
+        });
+        html += `<div class="action-col"><button class="icon-btn merge-btn" title="Merge into one" onclick="mergeRow('${day}','${slot}')">⊟</button></div>`;
+      }
+      html += `</div>`;
+    });
+
+    document.getElementById('gridBody').innerHTML = html;
+  }
+
+  window.splitRow = (day, slot) => {
+    if (!rowMode[day]) rowMode[day] = {};
+    rowMode[day][slot] = 'split';
+    const tracks = DAY_CONFIG[day].tracks;
+    const updates = { [`rowMode/${day}/${slot}`]: 'split' };
+    // Seed empty sessions for each track if not already set
+    tracks.forEach(t => {
+      const k = `${day}||${slot}||${t}`;
+      if (!sessions[k]) {
+        sessions[k] = {type:t, title:'', speaker:'', notes:''};
+        updates[`sessions/${day}||${slot}||${t}`] = sessions[k];
+      }
+    });
+    saveToFirebase(updates);
+    renderGrid();
+  };
+
+  window.mergeRow = (day, slot) => {
+    if (!rowMode[day]) rowMode[day] = {};
+    rowMode[day][slot] = 'general';
+    // Carry first track's content into general if general slot is empty
+    const tracks = DAY_CONFIG[day].tracks;
+    const firstTrackKey = `${day}||${slot}||${tracks[0]}`;
+    const genKey = `${day}||${slot}||general`;
+    const firstTrackSession = sessions[firstTrackKey] || {};
+    if (!sessions[genKey] || !sessions[genKey].title) {
+      sessions[genKey] = { type:'general', title: firstTrackSession.title||'', speaker: firstTrackSession.speaker||'', notes: firstTrackSession.notes||'' };
+    }
+    const updates = {
+      [`rowMode/${day}/${slot}`]: 'general',
+      [`sessions/${genKey}`]: sessions[genKey]
+    };
+    saveToFirebase(updates);
+    renderGrid();
+  };
+
+  window.openModal = (k) => {
+    editKey = k;
+    const s = sessions[k] || {};
+    document.getElementById('mTitle').value = s.title||'';
+    document.getElementById('mSpeaker').value = s.speaker||'';
+    document.getElementById('mNotes').value = s.notes||'';
+    // Build type options
+    const allTypes = [
+      {v:'general',l:'General session (full width)'},
+      {v:'trackA',l:'Application track'},{v:'trackT',l:'Technical track'},
+      {v:'trackW',l:'WRC track'},{v:'trackE',l:'EHR Solutions track'},
+      {v:'social',l:'Social event'},{v:'break',l:'Break / Meal'},{v:'empty',l:'Empty slot'}
+    ];
+    const cur = s.type||'empty';
+    document.getElementById('mType').innerHTML = allTypes.map(o=>`<option value="${o.v}"${o.v===cur?' selected':''}>${o.l}</option>`).join('');
+    document.getElementById('overlay').classList.add('open');
+    setTimeout(()=>document.getElementById('mTitle').focus(),80);
+  };
+
+  window.closeModal = () => { document.getElementById('overlay').classList.remove('open'); editKey=null; };
+
+  window.saveModal = () => {
+    if (!editKey) return;
+    const updated = {
+      type: document.getElementById('mType').value,
+      title: document.getElementById('mTitle').value.trim(),
+      speaker: document.getElementById('mSpeaker').value.trim(),
+      notes: document.getElementById('mNotes').value.trim()
+    };
+    sessions[editKey] = updated;
+    saveToFirebase({[`sessions/${editKey}`]: updated});
+    closeModal();
+    renderGrid();
+  };
+
+  window.exportBackup = () => {
+    const blob = new Blob([JSON.stringify({rowMode, sessions}, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `support-summit-backup-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  document.getElementById('overlay').addEventListener('click', e => { if(e.target===document.getElementById('overlay')) closeModal(); });
+  document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); if(e.metaKey&&e.key==='Enter') saveModal(); });
+
+  renderTabs();
+</script>
+<style>
+  :root {
+    --bg:#F7F6F2;--surface:#FFFFFF;--surface2:#F0EFE9;
+    --border:rgba(0,0,0,0.08);--border-strong:rgba(0,0,0,0.14);
+    --text:#1A1916;--text-muted:#6B6A65;--text-faint:#A09F9A;
+    --general:#1D5FA8;--general-bg:#E8F1FB;--general-border:#A8C8EE;
+    --trackA:#6B3FA8;--trackA-bg:#F0EBFB;--trackA-border:#C4A8EE;
+    --trackT:#A85A1A;--trackT-bg:#FBF0E4;--trackT-border:#EEC07A;
+    --trackW:#0E6E8C;--trackW-bg:#E0F4FA;--trackW-border:#7DCCE8;
+    --trackE:#7A1FA8;--trackE-bg:#F5E8FB;--trackE-border:#CFA8EE;
+    --social:#A8326B;--social-bg:#FBE8F1;--social-border:#EEA8C8;
+    --break-bg:#F0EFE9;--break-border:rgba(0,0,0,0.1);
+    --radius:8px;--radius-lg:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5;}
+  header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:50;}
+  .header-left{display:flex;align-items:center;gap:12px;}
+  .logo-mark{width:28px;height:28px;background:var(--text);border-radius:6px;display:flex;align-items:center;justify-content:center;}
+  .logo-mark svg{width:16px;height:16px;fill:var(--bg);}
+  .header-title{font-size:15px;font-weight:600;letter-spacing:-0.02em;}
+  .header-sub{font-size:12px;color:var(--text-muted);font-family:'DM Mono',monospace;}
+  .header-actions{display:flex;align-items:center;gap:10px;}
+  .status-dot-wrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);}
+  #statusDot{width:8px;height:8px;border-radius:50%;background:#94a3b8;transition:background 0.3s;}
+  .btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:6px 14px;border-radius:var(--radius);cursor:pointer;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);transition:background 0.12s;}
+  .btn:hover{background:var(--surface2);}
+  .btn-dark{background:var(--text);color:var(--bg);border-color:var(--text);}
+  .btn-dark:hover{background:#2e2d29;}
+  .main{padding:24px 32px 48px;max-width:1200px;margin:0 auto;}
+  .day-tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:4px;width:fit-content;}
+  .day-tab{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:6px 18px;border-radius:8px;cursor:pointer;border:none;background:transparent;color:var(--text-muted);transition:all 0.15s;}
+  .day-tab:hover{color:var(--text);background:var(--surface2);}
+  .day-tab.active{background:var(--text);color:var(--bg);}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);}
+  .legend-pip{width:8px;height:8px;border-radius:2px;}
+  .legend-note{font-size:11px;color:var(--text-faint);margin-left:4px;}
+  .grid-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;}
+  .grid-head{display:grid;gap:0;border-bottom:1px solid var(--border);background:var(--surface2);}
+  .grid-head-cell{padding:10px 12px;font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);border-right:1px solid var(--border);}
+  .grid-head-cell:last-child{border-right:none;}
+  .grid-body{display:flex;flex-direction:column;}
+  .time-row{display:grid;gap:0;border-bottom:1px solid var(--border);min-height:44px;}
+  .time-row:last-child{border-bottom:none;}
+  .time-cell{padding:6px 10px 6px 12px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-faint);border-right:1px solid var(--border);display:flex;align-items:flex-start;padding-top:10px;background:var(--surface2);}
+  .session-cell{border-right:1px solid var(--border);padding:4px;}
+  .session-cell:last-child{border-right:none;}
+  .session-cell.span-all{border-right:1px solid var(--border);}
+  .action-col{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3px 2px;background:var(--surface2);border-left:1px solid var(--border);}
+  .session-inner{width:100%;height:100%;border-radius:6px;padding:7px 10px;cursor:pointer;transition:filter 0.12s;min-height:34px;display:flex;flex-direction:column;justify-content:center;position:relative;}
+  .session-inner:hover{filter:brightness(0.96);}
+  .session-inner.type-general{background:var(--general-bg);border:1px solid var(--general-border);}
+  .session-inner.type-trackA{background:var(--trackA-bg);border:1px solid var(--trackA-border);}
+  .session-inner.type-trackT{background:var(--trackT-bg);border:1px solid var(--trackT-border);}
+  .session-inner.type-trackW{background:var(--trackW-bg);border:1px solid var(--trackW-border);}
+  .session-inner.type-trackE{background:var(--trackE-bg);border:1px solid var(--trackE-border);}
+  .session-inner.type-social{background:var(--social-bg);border:1px solid var(--social-border);}
+  .session-inner.type-break{background:var(--break-bg);border:1px dashed var(--break-border);}
+  .session-inner.type-empty{background:transparent;border:1px dashed var(--border);opacity:0.5;}
+  .session-inner.type-empty:hover{opacity:1;}
+  .s-title{font-size:12px;font-weight:500;line-height:1.3;}
+  .type-general .s-title{color:var(--general);}
+  .type-trackA .s-title{color:var(--trackA);}
+  .type-trackT .s-title{color:var(--trackT);}
+  .type-trackW .s-title{color:var(--trackW);}
+  .type-trackE .s-title{color:var(--trackE);}
+  .type-social .s-title{color:var(--social);}
+  .type-break .s-title{color:var(--text-muted);}
+  .type-empty .s-title{color:var(--text-faint);font-style:italic;}
+  .s-speaker{font-size:11px;margin-top:2px;opacity:0.75;}
+  .type-general .s-speaker{color:var(--general);}
+  .type-trackA .s-speaker{color:var(--trackA);}
+  .type-trackT .s-speaker{color:var(--trackT);}
+  .type-trackW .s-speaker{color:var(--trackW);}
+  .type-trackE .s-speaker{color:var(--trackE);}
+  .type-social .s-speaker{color:var(--social);}
+  .edit-chip{position:absolute;top:4px;right:5px;font-size:10px;background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.08);border-radius:4px;padding:1px 5px;color:var(--text-muted);opacity:0;transition:opacity 0.12s;pointer-events:none;}
+  .session-inner:hover .edit-chip{opacity:1;}
+  .icon-btn{width:24px;height:24px;border-radius:5px;border:1px solid var(--border-strong);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all 0.1s;line-height:1;}
+  .split-btn{color:#6B3FA8;border-color:#C4A8EE;}
+  .split-btn:hover{background:#F0EBFB;}
+  .merge-btn{color:#1A6B47;border-color:#7DCAA5;}
+  .merge-btn:hover{background:#E4F3EC;}
+  .evening-divider{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:8px 12px 4px;background:var(--surface);}
+  .evening-divider span{font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--social);white-space:nowrap;}
+  .evening-divider-line{flex:1;height:1px;background:var(--social-border);}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.15s;}
+  .overlay.open{opacity:1;pointer-events:all;}
+  .modal{background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-lg);padding:24px;width:400px;max-width:95vw;transform:translateY(8px);transition:transform 0.15s;}
+  .overlay.open .modal{transform:translateY(0);}
+  .modal-title{font-size:16px;font-weight:600;letter-spacing:-0.02em;margin-bottom:18px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-muted);margin-bottom:5px;}
+  .field input,.field select,.field textarea{width:100%;font-family:'DM Sans',sans-serif;font-size:14px;padding:8px 11px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--bg);color:var(--text);outline:none;transition:border-color 0.12s;}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:rgba(0,0,0,0.3);}
+  .field textarea{resize:vertical;min-height:64px;}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;}
+  .loading{display:flex;align-items:center;justify-content:center;height:200px;color:var(--text-muted);font-size:14px;gap:10px;}
+  .spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--text-muted);border-radius:50%;animation:spin 0.7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @media print{
+    header{position:static;}
+    .header-actions,.day-tabs,.legend,.action-col,.icon-btn{display:none!important;}
+    .grid-wrap{border:1px solid #ccc;}
+    .main{padding:0;max-width:100%;}
+    .overlay{display:none!important;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="logo-mark">
+      <svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+    </div>
+    <div>
+      <div class="header-title">Support Summit Agenda</div>
+      <div class="header-sub">~100 attendees &middot; Mon–Thu</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="status-dot-wrap"><div id="statusDot"></div><span>Live sync</span></div>
+    <button class="btn" onclick="exportBackup()">Backup JSON</button>
+    <button class="btn btn-dark" onclick="window.print()">Print / PDF</button>
+  </div>
+</header>
+
+<div class="main">
+  <div class="day-tabs" id="dayTabs"><div class="loading"><div class="spinner"></div> Connecting...</div></div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-pip" style="background:var(--general-border)"></div>General session</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--trackA-border)"></div>Application</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--trackT-border)"></div>Technical</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--trackW-border)"></div>WRC</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--trackE-border)"></div>EHR Solutions</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--social-border)"></div>Social event</div>
+    <div class="legend-item"><div class="legend-pip" style="background:#ccc;border:1px dashed #aaa;"></div>Break</div>
+    <span class="legend-note">⊞ split row into tracks &nbsp; ⊟ merge back into one</span>
+  </div>
+  <div class="grid-wrap">
+    <div class="grid-head" id="gridHead" style="grid-template-columns:72px 1fr 32px">
+      <div class="grid-head-cell">Time</div>
+      <div class="grid-head-cell">General Session</div>
+      <div class="grid-head-cell"></div>
+    </div>
+    <div class="grid-body" id="gridBody"><div class="loading"><div class="spinner"></div> Loading agenda...</div></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-title">Edit session</div>
+    <div class="field"><label>Title</label><input type="text" id="mTitle" placeholder="Session title"/></div>
+    <div class="field"><label>Speaker / facilitator</label><input type="text" id="mSpeaker" placeholder="Name or TBD"/></div>
+    <div class="field"><label>Session type</label><select id="mType"></select></div>
+    <div class="field"><label>Notes</label><textarea id="mNotes" placeholder="Room, location, details..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-dark" onclick="saveModal()">Save changes</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
