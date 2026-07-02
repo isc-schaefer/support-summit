@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>InterSystems - Support Summit 2026</title>
+<title>Support Summit 2026 — InterSystems</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -19,6 +19,8 @@
 
   /* LOGO BAR */
   .logo-bar{background:var(--white);padding:14px 40px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .backup-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:7px 14px;border-radius:var(--radius);cursor:pointer;border:1px solid var(--border);background:var(--offwhite);color:var(--text-muted);transition:all 0.12s;}
+  .backup-btn:hover{background:var(--gray);color:var(--text);}
 
   /* HERO */
   .hero{background:linear-gradient(135deg,var(--navy-dark) 0%,var(--navy) 50%,#3D3BA0 100%);padding:64px 40px 56px;text-align:center;position:relative;overflow:hidden;}
@@ -213,6 +215,7 @@
     <text x="40" y="22" font-family="Arial,sans-serif" font-weight="700" font-size="15" fill="#2D2B8F">InterSystems</text>
     <text x="40" y="36" font-family="Arial,sans-serif" font-size="9" fill="#5A5B7A">Creative data technology</text>
   </svg>
+  <button class="backup-btn" onclick="exportFullBackup()">⬇ Backup everything</button>
 </div>
 
 <div class="hero">
@@ -335,7 +338,6 @@
       <div class="agenda-toolbar">
         <div class="status-dot-wrap"><div id="statusDot"></div><span id="statusLabel">Connecting...</span></div>
         <div class="toolbar-actions">
-          <button class="btn-sm" onclick="exportBackup()">Backup JSON</button>
           <button class="btn-sm" onclick="window.print()">Print / PDF</button>
         </div>
       </div>
@@ -766,12 +768,31 @@
     }
   };
 
-  window.exportBackup=()=>{
-    const blob=new Blob([JSON.stringify({slotMode,sessions},null,2)],{type:'application/json'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download=`support-summit-week${currentWeek}-backup-${new Date().toISOString().slice(0,10)}.json`;
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
+  window.exportBackup=()=>window.exportFullBackup();
+
+  window.exportFullBackup=async()=>{
+    const btn=document.querySelector('.backup-btn');
+    if(btn){btn.textContent='⬇ Backing up...';btn.disabled=true;}
+    try {
+      const [w1snap, w2snap, csnap] = await Promise.all([
+        get(ref(db,'agenda_week1')),
+        get(ref(db,'agenda_week2')),
+        get(ref(db,'siteContent'))
+      ]);
+      const backup = {
+        exportedAt: new Date().toISOString(),
+        agenda_week1: w1snap.val() || {},
+        agenda_week2: w2snap.val() || {},
+        siteContent: csnap.val() || {}
+      };
+      const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=`support-summit-full-backup-${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+    } finally {
+      if(btn){btn.textContent='⬇ Backup everything';btn.disabled=false;}
+    }
   };
 
   document.addEventListener('click',e=>{
