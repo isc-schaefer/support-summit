@@ -244,31 +244,7 @@
   <div class="section-inner">
     <div class="section-title">Welcome</div>
     <div class="editable-field" style="max-width:760px;">
-      <div class="welcome-text" id="welcomeText"><span style="white-space:pre-wrap">DEAR COLLEAGUES,
-
-Welcome to Support Summit 2026.
-
-Cambridge is a fitting place for us to gather — a city built on intellect, precision, and the relentless pursuit of what's possible. It feels right that we meet here, because that's exactly who you are.
-
-This year, we come together under one word: Reignite.
-
-Not because the fire went out — but because the best flames need oxygen. And that's what this week is for.
-
-Support is not a backstage function. You are the frontline of the customer relationship, the people our customers call when it matters most, and the reason they stay. Every ticket closed, every crisis resolved, every customer who walks away feeling heard — that's you. That's your work. And it matters more than you may realize on any given Tuesday morning at 8am with a queue of 40 open cases.
-
-Our world is changing fast. AI is reshaping how we support, how we learn, and how we deliver value. We are not standing still — tools like Lumia are the beginning of a new chapter, one where your expertise is amplified, not replaced. The advisor who understands both the technology and the customer is and will remain the most valuable person in any room.
-
-I know I've been relentless about some of these new ideas — but believe me when I say, there's more where that came from. And I do truly believe we can change things for the better.
-
-This week is your opportunity to:
-
-· Reconnect with the colleagues you work alongside every day but rarely see in person
-· Learn what's coming — the roadmap, the tools, the direction
-· Celebrate what you've built and who you've become as a team
-
-You are excellent. You are passionate. And somewhere under the weight of the queue, the escalations, and the endless inbox — you have a killer instinct that brought you here in the first place.
-
-Let's make it roar. Together.</span></div>
+      <div class="welcome-text" id="welcomeText"></div>
       <button class="edit-pencil" onclick="openContentModal('welcomeText','Welcome message','textarea')">✏ Edit</button>
     </div>
     <div class="welcome-sig" style="margin-top:28px;">
@@ -567,7 +543,6 @@ Let's make it roar. Together.</span></div>
       if(val){
         if(id==='welcomeText') el.innerHTML=val;
         else el.innerHTML=escHtml(val);
-        el.querySelector('.placeholder-text') && el.querySelector('.placeholder-text').remove();
       }
     });
   }
