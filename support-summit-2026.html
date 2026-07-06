@@ -565,7 +565,7 @@ Let's make it roar. Together.</span></div>
       if(!el) return;
       const val=content[id];
       if(val){
-        if(id==='welcomeText') el.innerHTML=`<span style="white-space:pre-wrap">${escHtml(val)}</span>`;
+        if(id==='welcomeText') el.innerHTML=val;
         else el.innerHTML=escHtml(val);
         el.querySelector('.placeholder-text') && el.querySelector('.placeholder-text').remove();
       }
