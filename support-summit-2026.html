@@ -711,7 +711,8 @@
     menu.style.display='block';
     document.getElementById('smSlotLabel').textContent=`${day} · ${slot}`;
   };
-  window.closeSplitMenu=()=>{document.getElementById('splitMenu').style.display='none';splitMenuDay=null;splitMenuSlot=null;};
+  const closeSplitMenu=()=>{document.getElementById('splitMenu').style.display='none';splitMenuDay=null;splitMenuSlot=null;};
+  window.closeSplitMenu=closeSplitMenu;
 
   window.setMode=(day,slot,mode)=>{
     if(!day||!slot)return;
