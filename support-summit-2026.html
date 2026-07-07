@@ -701,6 +701,9 @@
     document.getElementById('gridBody').innerHTML=html;
   }
 
+  const closeSplitMenu=()=>{document.getElementById('splitMenu').style.display='none';splitMenuDay=null;splitMenuSlot=null;};
+  window.closeSplitMenu=closeSplitMenu;
+
   window.showSplitMenu=(day,slot,btn)=>{
     closeSplitMenu();
     splitMenuDay=day;splitMenuSlot=slot;window._smDay=day;window._smSlot=slot;
@@ -711,8 +714,6 @@
     menu.style.display='block';
     document.getElementById('smSlotLabel').textContent=`${day} · ${slot}`;
   };
-  const closeSplitMenu=()=>{document.getElementById('splitMenu').style.display='none';splitMenuDay=null;splitMenuSlot=null;};
-  window.closeSplitMenu=closeSplitMenu;
 
   window.setMode=(day,slot,mode)=>{
     if(!day||!slot)return;
