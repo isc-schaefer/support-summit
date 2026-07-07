@@ -294,9 +294,8 @@
           <div class="info-card-body">
             <div class="info-row">
               <div class="info-label">Hotel</div>
-              <div class="info-value editable-field">
-                <div class="info-value-inner" id="locHotel"><a href="https://www.sonesta.com/royal-sonesta/ma/cambridge/royal-sonesta-boston" target="_blank">Royal Sonesta Cambridge</a></div>
-                <button class="edit-pencil" onclick="openContentModal('locHotel','Hotel name','input')">✏ Edit</button>
+              <div class="info-value">
+                <div class="info-value-inner"><a href="https://www.sonesta.com/royal-sonesta/ma/cambridge/royal-sonesta-boston" target="_blank">Royal Sonesta Cambridge</a></div>
               </div>
             </div>
             <div class="info-row">
@@ -542,7 +541,7 @@
   function allSlots(day){return HAS_EVENING.has(day)?[...DAYTIME,...EVENING]:DAYTIME;}
 
   // Content field IDs and their Firebase keys
-  const CONTENT_FIELDS = ['welcomeText','sigName','sigTitle','locHotel','locAddress','locPhone','locFromBos','locTransit','locParking','logCheckin','logCheckout','logBreakfast','logDressSessions','logDressSocial','logWifiName','logWifiPass','logExpenses','logEmergency'];
+  const CONTENT_FIELDS = ['welcomeText','sigName','sigTitle','locAddress','locPhone','locFromBos','locTransit','locParking','logCheckin','logCheckout','logBreakfast','logDressSessions','logDressSocial','logWifiName','logWifiPass','logExpenses','logEmergency'];
 
   let slotMode={}, sessions={}, content={};
   let currentDay=0, currentWeek=1;
