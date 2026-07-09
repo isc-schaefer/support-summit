@@ -676,11 +676,12 @@
       }
 
       if(!rowHasContent){
-        return; // Skip this row
+        rowNum++; // Still increment row number even when skipping
+        return;
       }
 
       // Time cell
-      html+=`<div class="time-cell" style="grid-column:1;grid-row:${rowNum};border-bottom:1px solid var(--gray);">${slot}</div>`;
+      html+=`<div class="time-cell" style="grid-column:1;grid-row:${rowNum};border-bottom:1px solid var(--gray);background:var(--offwhite);">${slot}</div>`;
 
       if(mode==='single'){
         const k=`${day}||${slot}||single`;
@@ -697,7 +698,7 @@
           }
 
           const minH=rowSpan*46-8;
-          html+=`<div class="session-cell" style="grid-column:2/${2+span};grid-row:${rowNum}/span ${rowSpan};border-bottom:1px solid var(--gray);border-right:1px solid var(--gray);">
+          html+=`<div class="session-cell" style="grid-column:2/${2+span};grid-row:${rowNum}/span ${rowSpan};border-bottom:1px solid var(--gray);border-right:1px solid var(--gray);background:var(--white);">
             <div class="session-inner type-${s.type||'empty'}" onclick="openSessionModal('${k}')" style="min-height:${minH}px;">
               <div class="s-title">${s.title||'+ add session'}</div>
               ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
@@ -706,7 +707,7 @@
           </div>`;
         }
         const cols=dom==='three'?5:dom==='two'?4:3;
-        html+=`<div class="action-col" style="grid-column:${cols};grid-row:${rowNum};border-bottom:1px solid var(--gray);"><button class="icon-btn split-btn" title="Split into rooms" onclick="showSplitMenu('${day}','${slot}',this)">⊞</button></div>`;
+        html+=`<div class="action-col" style="grid-column:${cols};grid-row:${rowNum};border-bottom:1px solid var(--gray);background:var(--offwhite);"><button class="icon-btn split-btn" title="Split into rooms" onclick="showSplitMenu('${day}','${slot}',this)">⊞</button></div>`;
       } else if(mode==='two'){
         ['roomE','roomW'].forEach((r,idx)=>{
           const k=`${day}||${slot}||${r}`;
@@ -723,7 +724,7 @@
 
             const col=idx+2;
             const minH=rowSpan*46-8;
-            html+=`<div class="session-cell" style="grid-column:${col};grid-row:${rowNum}/span ${rowSpan};border-bottom:1px solid var(--gray);border-right:1px solid var(--gray);">
+            html+=`<div class="session-cell" style="grid-column:${col};grid-row:${rowNum}/span ${rowSpan};border-bottom:1px solid var(--gray);border-right:1px solid var(--gray);background:var(--white);">
               <div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')" style="min-height:${minH}px;">
                 <div class="s-title">${s.title||'+ add'}</div>
                 ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
@@ -732,7 +733,7 @@
             </div>`;
           }
         });
-        html+=`<div class="action-col" style="grid-column:4;grid-row:${rowNum};border-bottom:1px solid var(--gray);">
+        html+=`<div class="action-col" style="grid-column:4;grid-row:${rowNum};border-bottom:1px solid var(--gray);background:var(--offwhite);">
           <button class="icon-btn split3-btn" title="Split West Tower" onclick="setMode('${day}','${slot}','three')" style="font-size:10px;width:28px;height:18px">W⊞</button>
           <button class="icon-btn merge-btn" title="Merge to single" onclick="setMode('${day}','${slot}','single')">⊟</button>
         </div>`;
@@ -752,7 +753,7 @@
 
             const col=idx+2;
             const minH=rowSpan*46-8;
-            html+=`<div class="session-cell" style="grid-column:${col};grid-row:${rowNum}/span ${rowSpan};border-bottom:1px solid var(--gray);border-right:1px solid var(--gray);">
+            html+=`<div class="session-cell" style="grid-column:${col};grid-row:${rowNum}/span ${rowSpan};border-bottom:1px solid var(--gray);border-right:1px solid var(--gray);background:var(--white);">
               <div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')" style="min-height:${minH}px;">
                 <div class="s-title">${s.title||'+ add'}</div>
                 ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
@@ -761,7 +762,7 @@
             </div>`;
           }
         });
-        html+=`<div class="action-col" style="grid-column:5;grid-row:${rowNum};border-bottom:1px solid var(--gray);">
+        html+=`<div class="action-col" style="grid-column:5;grid-row:${rowNum};border-bottom:1px solid var(--gray);background:var(--offwhite);">
           <button class="icon-btn merge2-btn" title="Merge West Tower" onclick="setMode('${day}','${slot}','two')" style="font-size:10px;width:28px;height:18px">W⊟</button>
           <button class="icon-btn merge-btn" title="Merge all" onclick="setMode('${day}','${slot}','single')">⊟</button>
         </div>`;
