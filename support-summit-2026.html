@@ -704,7 +704,7 @@
         }
         html+=`<div class="action-col"><button class="icon-btn split-btn" title="Split into rooms" onclick="showSplitMenu('${day}','${slot}',this)">⊞</button></div>`;
       } else if(mode==='two'){
-        ['roomE','roomW'].forEach(r=>{
+        ['roomE','roomW'].forEach((r,idx)=>{
           const k=`${day}||${slot}||${r}`;
           if(!skippedSlots.has(k)){
             const s=sessions[k]||{type:r,title:'',speaker:'',notes:''};
@@ -718,15 +718,13 @@
               }
             }
 
+            const col=idx+2; // roomE=2, roomW=3
             const minH=rowSpan>1?`min-height:${rowSpan*46-8}px;`:'';
-            html+=`<div class="session-cell" style="grid-row:span ${rowSpan}"><div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')" style="${minH}">
+            html+=`<div class="session-cell" style="grid-column:${col};grid-row:span ${rowSpan}"><div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')" style="${minH}">
               <div class="s-title">${s.title||'+ add'}</div>
               ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
               <span class="edit-chip">edit</span>
             </div></div>`;
-          } else {
-            // Show empty placeholder to maintain grid alignment
-            html+=`<div class="session-cell" style="visibility:hidden;"></div>`;
           }
         });
         html+=`<div class="action-col" style="gap:3px">
@@ -734,7 +732,7 @@
           <button class="icon-btn merge-btn" title="Merge to single" onclick="setMode('${day}','${slot}','single')">⊟</button>
         </div>`;
       } else {
-        ['roomE','roomW1','roomW2'].forEach(r=>{
+        ['roomE','roomW1','roomW2'].forEach((r,idx)=>{
           const k=`${day}||${slot}||${r}`;
           if(!skippedSlots.has(k)){
             const s=sessions[k]||{type:r,title:'',speaker:'',notes:''};
@@ -748,15 +746,13 @@
               }
             }
 
+            const col=idx+2; // roomE=2, roomW1=3, roomW2=4
             const minH=rowSpan>1?`min-height:${rowSpan*46-8}px;`:'';
-            html+=`<div class="session-cell" style="grid-row:span ${rowSpan}"><div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')" style="${minH}">
+            html+=`<div class="session-cell" style="grid-column:${col};grid-row:span ${rowSpan}"><div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')" style="${minH}">
               <div class="s-title">${s.title||'+ add'}</div>
               ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
               <span class="edit-chip">edit</span>
             </div></div>`;
-          } else {
-            // Show empty placeholder to maintain grid alignment
-            html+=`<div class="session-cell" style="visibility:hidden;"></div>`;
           }
         });
         html+=`<div class="action-col" style="gap:3px">
