@@ -96,12 +96,9 @@
   .grid-head{display:grid;gap:0;border-bottom:1px solid var(--border);background:var(--navy);}
   .ghc{padding:10px 14px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.8);border-right:1px solid rgba(255,255,255,0.1);}
   .ghc:last-child{border-right:none;}
-  .grid-body{display:flex;flex-direction:column;}
-  .time-row{display:grid;gap:0;border-bottom:1px solid var(--gray);min-height:46px;background:var(--offwhite);}
-  .time-row:last-child{border-bottom:none;}
-  .time-cell{padding:10px 10px 6px 14px;font-size:11px;font-family:'Inter',monospace;color:var(--text-light);border-right:1px solid var(--gray);background:var(--offwhite);}
-  .session-cell{border-right:1px solid var(--gray);padding:4px;}
-  .session-cell:last-child{border-right:none;}
+  .grid-body{display:grid;gap:0;}
+  .time-cell{padding:10px 10px 6px 14px;font-size:11px;font-family:'Inter',monospace;color:var(--text-light);border-right:1px solid var(--gray);background:var(--offwhite);min-height:46px;}
+  .session-cell{padding:4px;}
   .action-col{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:3px 2px;background:var(--offwhite);border-left:1px solid var(--gray);}
   .session-inner{width:100%;height:100%;border-radius:var(--radius);padding:7px 10px;cursor:pointer;transition:filter 0.12s;min-height:36px;display:flex;flex-direction:column;justify-content:center;position:relative;}
   .session-inner:hover{filter:brightness(0.95);}
@@ -649,19 +646,26 @@
     hh+=`<div class="ghc"></div>`;
     headEl.innerHTML=hh;
 
+    // Set up gridBody as a CSS Grid
+    const gridBody=document.getElementById('gridBody');
+    gridBody.style.display='grid';
+    gridBody.style.gridTemplateColumns=colsForMode(dom);
+    gridBody.style.gap='0';
+
     let html='';let pe=false;
-    const skippedSlots=new Set(); // Track slots covered by duration spans
+    const skippedSlots=new Set();
+    let rowNum=1; // Track current grid row number
 
     slots.forEach((slot,slotIdx)=>{
       if(EVENING.includes(slot)&&!pe){
         pe=true;
-        html+=`<div class="time-row" style="grid-template-columns:${colsForMode(dom)};min-height:auto;border-bottom:1px solid var(--gray);">
-          <div class="evening-divider"><span>Evening</span><div class="evening-divider-line"></div></div>
-        </div>`;
+        const cols=dom==='three'?5:dom==='two'?4:3;
+        html+=`<div class="evening-divider" style="grid-column:1/${cols+1};grid-row:${rowNum};min-height:auto;border-bottom:1px solid var(--gray);"><span>Evening</span><div class="evening-divider-line"></div></div>`;
+        rowNum++;
       }
       const mode=getMode(day,slot);
 
-      // Check if this entire row should be hidden (all sessions are spanned from above)
+      // Check if this entire row should be hidden
       let rowHasContent=false;
       if(mode==='single'){
         rowHasContent=!skippedSlots.has(`${day}||${slot}||single`);
@@ -672,37 +676,37 @@
       }
 
       if(!rowHasContent){
-        // Skip this row entirely - all sessions are part of spans from above
-        return;
+        return; // Skip this row
       }
 
-      html+=`<div class="time-row" style="grid-template-columns:${colsForMode(mode)}">`;
-      html+=`<div class="time-cell">${slot}</div>`;
+      // Time cell
+      html+=`<div class="time-cell" style="grid-column:1;grid-row:${rowNum};border-bottom:1px solid var(--gray);">${slot}</div>`;
+
       if(mode==='single'){
         const k=`${day}||${slot}||single`;
         if(!skippedSlots.has(k)){
           const s=sessions[k]||{type:'empty',title:'',speaker:'',notes:''};
           const duration=s.duration||0.5;
           const rowSpan=Math.round(duration/0.5);
-          const span=dom==='three'?4:dom==='two'?3:2;
+          const span=dom==='three'?3:dom==='two'?2:1;
 
-          // Mark subsequent slots as skipped
           for(let i=1;i<rowSpan;i++){
             if(slotIdx+i<slots.length){
               skippedSlots.add(`${day}||${slots[slotIdx+i]}||single`);
             }
           }
 
-          const minH=rowSpan>1?`min-height:${rowSpan*46-8}px;`:'';
-          html+=`<div class="session-cell" style="grid-column:2/${1+span};grid-row:span ${rowSpan}">
-            <div class="session-inner type-${s.type||'empty'}" onclick="openSessionModal('${k}')" style="${minH}">
+          const minH=rowSpan*46-8;
+          html+=`<div class="session-cell" style="grid-column:2/${2+span};grid-row:${rowNum}/span ${rowSpan};border-bottom:1px solid var(--gray);border-right:1px solid var(--gray);">
+            <div class="session-inner type-${s.type||'empty'}" onclick="openSessionModal('${k}')" style="min-height:${minH}px;">
               <div class="s-title">${s.title||'+ add session'}</div>
               ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
               <span class="edit-chip">edit</span>
             </div>
           </div>`;
         }
-        html+=`<div class="action-col"><button class="icon-btn split-btn" title="Split into rooms" onclick="showSplitMenu('${day}','${slot}',this)">⊞</button></div>`;
+        const cols=dom==='three'?5:dom==='two'?4:3;
+        html+=`<div class="action-col" style="grid-column:${cols};grid-row:${rowNum};border-bottom:1px solid var(--gray);"><button class="icon-btn split-btn" title="Split into rooms" onclick="showSplitMenu('${day}','${slot}',this)">⊞</button></div>`;
       } else if(mode==='two'){
         ['roomE','roomW'].forEach((r,idx)=>{
           const k=`${day}||${slot}||${r}`;
@@ -711,23 +715,24 @@
             const duration=s.duration||0.5;
             const rowSpan=Math.round(duration/0.5);
 
-            // Mark subsequent slots as skipped
             for(let i=1;i<rowSpan;i++){
               if(slotIdx+i<slots.length){
                 skippedSlots.add(`${day}||${slots[slotIdx+i]}||${r}`);
               }
             }
 
-            const col=idx+2; // roomE=2, roomW=3
-            const minH=rowSpan>1?`min-height:${rowSpan*46-8}px;`:'';
-            html+=`<div class="session-cell" style="grid-column:${col};grid-row:span ${rowSpan}"><div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')" style="${minH}">
-              <div class="s-title">${s.title||'+ add'}</div>
-              ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
-              <span class="edit-chip">edit</span>
-            </div></div>`;
+            const col=idx+2;
+            const minH=rowSpan*46-8;
+            html+=`<div class="session-cell" style="grid-column:${col};grid-row:${rowNum}/span ${rowSpan};border-bottom:1px solid var(--gray);border-right:1px solid var(--gray);">
+              <div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')" style="min-height:${minH}px;">
+                <div class="s-title">${s.title||'+ add'}</div>
+                ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
+                <span class="edit-chip">edit</span>
+              </div>
+            </div>`;
           }
         });
-        html+=`<div class="action-col" style="gap:3px">
+        html+=`<div class="action-col" style="grid-column:4;grid-row:${rowNum};border-bottom:1px solid var(--gray);">
           <button class="icon-btn split3-btn" title="Split West Tower" onclick="setMode('${day}','${slot}','three')" style="font-size:10px;width:28px;height:18px">W⊞</button>
           <button class="icon-btn merge-btn" title="Merge to single" onclick="setMode('${day}','${slot}','single')">⊟</button>
         </div>`;
@@ -739,30 +744,31 @@
             const duration=s.duration||0.5;
             const rowSpan=Math.round(duration/0.5);
 
-            // Mark subsequent slots as skipped
             for(let i=1;i<rowSpan;i++){
               if(slotIdx+i<slots.length){
                 skippedSlots.add(`${day}||${slots[slotIdx+i]}||${r}`);
               }
             }
 
-            const col=idx+2; // roomE=2, roomW1=3, roomW2=4
-            const minH=rowSpan>1?`min-height:${rowSpan*46-8}px;`:'';
-            html+=`<div class="session-cell" style="grid-column:${col};grid-row:span ${rowSpan}"><div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')" style="${minH}">
-              <div class="s-title">${s.title||'+ add'}</div>
-              ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
-              <span class="edit-chip">edit</span>
-            </div></div>`;
+            const col=idx+2;
+            const minH=rowSpan*46-8;
+            html+=`<div class="session-cell" style="grid-column:${col};grid-row:${rowNum}/span ${rowSpan};border-bottom:1px solid var(--gray);border-right:1px solid var(--gray);">
+              <div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')" style="min-height:${minH}px;">
+                <div class="s-title">${s.title||'+ add'}</div>
+                ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
+                <span class="edit-chip">edit</span>
+              </div>
+            </div>`;
           }
         });
-        html+=`<div class="action-col" style="gap:3px">
+        html+=`<div class="action-col" style="grid-column:5;grid-row:${rowNum};border-bottom:1px solid var(--gray);">
           <button class="icon-btn merge2-btn" title="Merge West Tower" onclick="setMode('${day}','${slot}','two')" style="font-size:10px;width:28px;height:18px">W⊟</button>
           <button class="icon-btn merge-btn" title="Merge all" onclick="setMode('${day}','${slot}','single')">⊟</button>
         </div>`;
       }
-      html+=`</div>`;
+      rowNum++;
     });
-    document.getElementById('gridBody').innerHTML=html;
+    gridBody.innerHTML=html;
   }
 
   const closeSplitMenu=()=>{document.getElementById('splitMenu').style.display='none';splitMenuDay=null;splitMenuSlot=null;};
