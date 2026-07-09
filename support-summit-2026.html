@@ -665,7 +665,10 @@
       }
       const mode=getMode(day,slot);
 
-      // Check if this entire row should be hidden
+      // Always render time cell for consistent grey background
+      html+=`<div class="time-cell" style="grid-column:1;grid-row:${rowNum};border-bottom:1px solid var(--gray);background:var(--offwhite);">${slot}</div>`;
+
+      // Check if this row has any session content to render
       let rowHasContent=false;
       if(mode==='single'){
         rowHasContent=!skippedSlots.has(`${day}||${slot}||single`);
@@ -676,12 +679,10 @@
       }
 
       if(!rowHasContent){
-        rowNum++; // Still increment row number even when skipping
+        // No content to render, but time cell is already rendered - just move to next row
+        rowNum++;
         return;
       }
-
-      // Time cell
-      html+=`<div class="time-cell" style="grid-column:1;grid-row:${rowNum};border-bottom:1px solid var(--gray);background:var(--offwhite);">${slot}</div>`;
 
       if(mode==='single'){
         const k=`${day}||${slot}||single`;
@@ -698,7 +699,7 @@
           }
 
           const minH=rowSpan*46-8;
-          html+=`<div class="session-cell" style="grid-column:2/${2+span};grid-row:${rowNum}/span ${rowSpan};border-bottom:1px solid var(--gray);border-right:1px solid var(--gray);background:var(--white);">
+          html+=`<div class="session-cell" style="grid-column:2/${2+span};grid-row:${rowNum}/span ${rowSpan};border-bottom:1px solid var(--gray);border-right:1px solid var(--gray);">
             <div class="session-inner type-${s.type||'empty'}" onclick="openSessionModal('${k}')" style="min-height:${minH}px;">
               <div class="s-title">${s.title||'+ add session'}</div>
               ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
@@ -724,7 +725,7 @@
 
             const col=idx+2;
             const minH=rowSpan*46-8;
-            html+=`<div class="session-cell" style="grid-column:${col};grid-row:${rowNum}/span ${rowSpan};border-bottom:1px solid var(--gray);border-right:1px solid var(--gray);background:var(--white);">
+            html+=`<div class="session-cell" style="grid-column:${col};grid-row:${rowNum}/span ${rowSpan};border-bottom:1px solid var(--gray);border-right:1px solid var(--gray);">
               <div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')" style="min-height:${minH}px;">
                 <div class="s-title">${s.title||'+ add'}</div>
                 ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
@@ -753,7 +754,7 @@
 
             const col=idx+2;
             const minH=rowSpan*46-8;
-            html+=`<div class="session-cell" style="grid-column:${col};grid-row:${rowNum}/span ${rowSpan};border-bottom:1px solid var(--gray);border-right:1px solid var(--gray);background:var(--white);">
+            html+=`<div class="session-cell" style="grid-column:${col};grid-row:${rowNum}/span ${rowSpan};border-bottom:1px solid var(--gray);border-right:1px solid var(--gray);">
               <div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')" style="min-height:${minH}px;">
                 <div class="s-title">${s.title||'+ add'}</div>
                 ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
