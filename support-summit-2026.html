@@ -660,6 +660,22 @@
         </div>`;
       }
       const mode=getMode(day,slot);
+
+      // Check if this entire row should be hidden (all sessions are spanned from above)
+      let rowHasContent=false;
+      if(mode==='single'){
+        rowHasContent=!skippedSlots.has(`${day}||${slot}||single`);
+      }else if(mode==='two'){
+        rowHasContent=!skippedSlots.has(`${day}||${slot}||roomE`) || !skippedSlots.has(`${day}||${slot}||roomW`);
+      }else{
+        rowHasContent=!skippedSlots.has(`${day}||${slot}||roomE`) || !skippedSlots.has(`${day}||${slot}||roomW1`) || !skippedSlots.has(`${day}||${slot}||roomW2`);
+      }
+
+      if(!rowHasContent){
+        // Skip this row entirely - all sessions are part of spans from above
+        return;
+      }
+
       html+=`<div class="time-row" style="grid-template-columns:${colsForMode(mode)}">`;
       html+=`<div class="time-cell">${slot}</div>`;
       if(mode==='single'){
