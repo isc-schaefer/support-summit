@@ -748,10 +748,16 @@
       {v:'roomW1',l:'West Tower 1'},{v:'roomW2',l:'West Tower 2'},
       {v:'social',l:'Social event'},{v:'break',l:'Break / Meal'}
     ];
+    const durations=[
+      {v:0.5,l:'30 minutes'},{v:1,l:'1 hour'},{v:1.5,l:'1.5 hours'},
+      {v:2,l:'2 hours'},{v:2.5,l:'2.5 hours'},{v:3,l:'3 hours'}
+    ];
+    const curDur=s.duration||0.5;
     document.getElementById('modalTitle').textContent='Edit session';
     document.getElementById('modalBody').innerHTML=`
       <div class="field"><label>Title</label><input type="text" id="mTitle" value="${escHtml(s.title||'')}" placeholder="Session title"/></div>
       <div class="field"><label>Speaker / facilitator</label><input type="text" id="mSpeaker" value="${escHtml(s.speaker||'')}" placeholder="Name or TBD"/></div>
+      <div class="field"><label>Duration</label><select id="mDuration">${durations.map(o=>`<option value="${o.v}"${o.v===curDur?' selected':''}>${o.l}</option>`).join('')}</select></div>
       <div class="field"><label>Session type</label><select id="mType">${types.map(o=>`<option value="${o.v}"${o.v===cur?' selected':''}>${o.l}</option>`).join('')}</select></div>
       <div class="field"><label>Notes</label><textarea id="mNotes" placeholder="Room, location, details...">${escHtml(s.notes||'')}</textarea></div>`;
     openModal();
@@ -778,7 +784,13 @@
   window.saveModal=()=>{
     if(modalMode==='session'){
       if(!editKey)return;
-      const updated={type:document.getElementById('mType').value,title:document.getElementById('mTitle').value.trim(),speaker:document.getElementById('mSpeaker').value.trim(),notes:document.getElementById('mNotes').value.trim()};
+      const updated={
+        type:document.getElementById('mType').value,
+        title:document.getElementById('mTitle').value.trim(),
+        speaker:document.getElementById('mSpeaker').value.trim(),
+        duration:parseFloat(document.getElementById('mDuration').value),
+        notes:document.getElementById('mNotes').value.trim()
+      };
       sessions[editKey]=updated;
       saveToFirebase(fbPath(currentWeek),{[`sessions/${editKey}`]:updated});
       closeModal();renderGrid();

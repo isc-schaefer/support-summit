@@ -650,7 +650,9 @@
     headEl.innerHTML=hh;
 
     let html='';let pe=false;
-    slots.forEach(slot=>{
+    const skippedSlots=new Set(); // Track slots covered by duration spans
+
+    slots.forEach((slot,slotIdx)=>{
       if(EVENING.includes(slot)&&!pe){
         pe=true;
         html+=`<div class="time-row" style="grid-template-columns:${colsForMode(dom)};min-height:auto;border-bottom:1px solid var(--gray);">
@@ -662,25 +664,51 @@
       html+=`<div class="time-cell">${slot}</div>`;
       if(mode==='single'){
         const k=`${day}||${slot}||single`;
-        const s=sessions[k]||{type:'empty',title:'',speaker:'',notes:''};
-        const span=dom==='three'?4:dom==='two'?3:2;
-        html+=`<div class="session-cell" style="grid-column:2/${1+span}">
-          <div class="session-inner type-${s.type||'empty'}" onclick="openSessionModal('${k}')">
-            <div class="s-title">${s.title||'+ add session'}</div>
-            ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
-            <span class="edit-chip">edit</span>
-          </div>
-        </div>`;
+        if(!skippedSlots.has(k)){
+          const s=sessions[k]||{type:'empty',title:'',speaker:'',notes:''};
+          const duration=s.duration||0.5;
+          const rowSpan=Math.round(duration/0.5);
+          const span=dom==='three'?4:dom==='two'?3:2;
+
+          // Mark subsequent slots as skipped
+          for(let i=1;i<rowSpan;i++){
+            if(slotIdx+i<slots.length){
+              skippedSlots.add(`${day}||${slots[slotIdx+i]}||single`);
+            }
+          }
+
+          const minH=rowSpan>1?`min-height:${rowSpan*46-8}px;`:'';
+          html+=`<div class="session-cell" style="grid-column:2/${1+span};grid-row:span ${rowSpan}">
+            <div class="session-inner type-${s.type||'empty'}" onclick="openSessionModal('${k}')" style="${minH}">
+              <div class="s-title">${s.title||'+ add session'}</div>
+              ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
+              <span class="edit-chip">edit</span>
+            </div>
+          </div>`;
+        }
         html+=`<div class="action-col"><button class="icon-btn split-btn" title="Split into rooms" onclick="showSplitMenu('${day}','${slot}',this)">⊞</button></div>`;
       } else if(mode==='two'){
         ['roomE','roomW'].forEach(r=>{
           const k=`${day}||${slot}||${r}`;
-          const s=sessions[k]||{type:r,title:'',speaker:'',notes:''};
-          html+=`<div class="session-cell"><div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')">
-            <div class="s-title">${s.title||'+ add'}</div>
-            ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
-            <span class="edit-chip">edit</span>
-          </div></div>`;
+          if(!skippedSlots.has(k)){
+            const s=sessions[k]||{type:r,title:'',speaker:'',notes:''};
+            const duration=s.duration||0.5;
+            const rowSpan=Math.round(duration/0.5);
+
+            // Mark subsequent slots as skipped
+            for(let i=1;i<rowSpan;i++){
+              if(slotIdx+i<slots.length){
+                skippedSlots.add(`${day}||${slots[slotIdx+i]}||${r}`);
+              }
+            }
+
+            const minH=rowSpan>1?`min-height:${rowSpan*46-8}px;`:'';
+            html+=`<div class="session-cell" style="grid-row:span ${rowSpan}"><div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')" style="${minH}">
+              <div class="s-title">${s.title||'+ add'}</div>
+              ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
+              <span class="edit-chip">edit</span>
+            </div></div>`;
+          }
         });
         html+=`<div class="action-col" style="gap:3px">
           <button class="icon-btn split3-btn" title="Split West Tower" onclick="setMode('${day}','${slot}','three')" style="font-size:10px;width:28px;height:18px">W⊞</button>
@@ -689,12 +717,25 @@
       } else {
         ['roomE','roomW1','roomW2'].forEach(r=>{
           const k=`${day}||${slot}||${r}`;
-          const s=sessions[k]||{type:r,title:'',speaker:'',notes:''};
-          html+=`<div class="session-cell"><div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')">
-            <div class="s-title">${s.title||'+ add'}</div>
-            ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
-            <span class="edit-chip">edit</span>
-          </div></div>`;
+          if(!skippedSlots.has(k)){
+            const s=sessions[k]||{type:r,title:'',speaker:'',notes:''};
+            const duration=s.duration||0.5;
+            const rowSpan=Math.round(duration/0.5);
+
+            // Mark subsequent slots as skipped
+            for(let i=1;i<rowSpan;i++){
+              if(slotIdx+i<slots.length){
+                skippedSlots.add(`${day}||${slots[slotIdx+i]}||${r}`);
+              }
+            }
+
+            const minH=rowSpan>1?`min-height:${rowSpan*46-8}px;`:'';
+            html+=`<div class="session-cell" style="grid-row:span ${rowSpan}"><div class="session-inner type-${s.type||r}" onclick="openSessionModal('${k}')" style="${minH}">
+              <div class="s-title">${s.title||'+ add'}</div>
+              ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
+              <span class="edit-chip">edit</span>
+            </div></div>`;
+          }
         });
         html+=`<div class="action-col" style="gap:3px">
           <button class="icon-btn merge2-btn" title="Merge West Tower" onclick="setMode('${day}','${slot}','two')" style="font-size:10px;width:28px;height:18px">W⊟</button>
