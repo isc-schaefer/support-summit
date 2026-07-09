@@ -724,6 +724,9 @@
               ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
               <span class="edit-chip">edit</span>
             </div></div>`;
+          } else {
+            // Show empty placeholder to maintain grid alignment
+            html+=`<div class="session-cell" style="visibility:hidden;"></div>`;
           }
         });
         html+=`<div class="action-col" style="gap:3px">
@@ -751,6 +754,9 @@
               ${s.speaker?`<div class="s-speaker">${s.speaker}</div>`:''}
               <span class="edit-chip">edit</span>
             </div></div>`;
+          } else {
+            // Show empty placeholder to maintain grid alignment
+            html+=`<div class="session-cell" style="visibility:hidden;"></div>`;
           }
         });
         html+=`<div class="action-col" style="gap:3px">
