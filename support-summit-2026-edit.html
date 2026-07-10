@@ -433,6 +433,25 @@
             </div>
           </div>
         </div>
+        <div class="info-card">
+          <div class="info-card-header">Social Event</div>
+          <div class="info-card-body">
+            <div class="info-row">
+              <div class="info-label">Venue</div>
+              <div class="info-value editable-field">
+                <div class="info-value-inner" id="logSocialVenue"><span class="placeholder-text">TBD</span></div>
+                <button class="edit-pencil" onclick="openContentModal('logSocialVenue','Social event venue (name and link)','input')">✏ Edit</button>
+              </div>
+            </div>
+            <div class="info-row">
+              <div class="info-label">Transportation</div>
+              <div class="info-value editable-field">
+                <div class="info-value-inner" id="logSocialTransport"><span class="placeholder-text">TBD</span></div>
+                <button class="edit-pencil" onclick="openContentModal('logSocialTransport','Transportation details','textarea')">✏ Edit</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <div>
         <div class="info-card">
@@ -545,7 +564,7 @@
   function allSlots(day){return HAS_EVENING.has(day)?[...DAYTIME,...EVENING]:DAYTIME;}
 
   // Content field IDs and their Firebase keys
-  const CONTENT_FIELDS = ['welcomeText','sigName','sigTitle','locAddress','locPhone','locFromBos','locTransit','locParking','logCheckin','logCheckout','logBreakfast','logDressSessions','logDressSocial','logWifiName','logWifiPass','logExpenses','logEmergency'];
+  const CONTENT_FIELDS = ['welcomeText','sigName','sigTitle','locAddress','locPhone','locFromBos','locTransit','locParking','logCheckin','logCheckout','logBreakfast','logDressSessions','logDressSocial','logSocialVenue','logSocialTransport','logWifiName','logWifiPass','logExpenses','logEmergency'];
 
   let slotMode={}, sessions={}, content={};
   let currentDay=0, currentWeek=1;
@@ -566,8 +585,8 @@
       if(!el) return;
       const val=content[id];
       if(val){
-        if(id==='welcomeText') el.innerHTML=val;
-        else el.innerHTML=escHtml(val);
+        if(id==='welcomeText' || id==='logSocialVenue') el.innerHTML=val;
+        else el.innerHTML=escHtml(val).replace(/\n/g,'<br>');
       }
     });
   }
